@@ -1,0 +1,9 @@
+[package]
+name = "rbup"
+version = "0.0.0"
+authors = ["Dominik Werder <dominik.werder@gmail.com>"]
+description = "rbup"
+license = "GPL-3.0-only"
+
+[lib]
+doctest = false
