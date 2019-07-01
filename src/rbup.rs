@@ -361,7 +361,7 @@ impl std::fmt::Debug for Odb {
 }
 
 #[test] fn find_wrong_oid_returns_empty() {
-  let odb = Odb::open("/Users/dwerder/test_bup".into()).unwrap();
+  let odb = Odb::open("test/data/bup01".into()).unwrap();
   eprintln!("{:?}", odb);
   let obj = odb.find_obj_by_oid(&Oid::from_hex("0000000000000000000000000000000000011111").unwrap()).unwrap();
   eprintln!("{:?}", obj);
@@ -369,7 +369,7 @@ impl std::fmt::Debug for Odb {
 }
 
 #[test] fn find_obj_by_oid() {
-  let odb = Odb::open("/Users/dwerder/test_bup".into()).unwrap();
+  let odb = Odb::open("test/data/bup01".into()).unwrap();
   eprintln!("{:?}", odb);
   let oid = Oid::from_hex("66524634ea09459bf8ef3bc396ffc3b8ecc6d045").unwrap();
   let obj = odb.find_obj_by_oid(&oid).unwrap().unwrap();
@@ -1067,22 +1067,15 @@ impl<T: ReadSeek> Midx<T> {
 }
 
 #[test] fn midx_read() {
-  let f1 = "/Users/dwerder/vmwr/midx-07fee57637bd637c7a4ae85879ded24731ad2f15.midx";
-  let f2 = "/Users/dwerder/test_bup/objects/pack/midx-0d58e72e68f0273f6f8d7f523bbc529e7cddb33f.midx";
-  let f3 = "/Users/dwerder/bup2/objects/pack/midx-3dc965112c6d56d6f5ae9255d464226216ef9b94.midx";
-  let fpath = std::path::Path::new(f3);
+  let fname = "test/data/bup01/objects/pack/midx-90a9c6f64d63d39516fafa7fd2fc2ceec918f5df.midx";
+  let fpath = std::path::Path::new(fname);
   let fmidx = std::fs::File::open(fpath).unwrap();
   let mut m = Midx::open(Box::new(fmidx)).unwrap();
   eprintln!("Entries: {}", m.entries());
-  if false {
-    for i in 0..m.entries() {
-      eprintln!("{}", m.fan(i));
-    }
+  for i in 0..m.entries() {
+    eprintln!("{}", m.fan(i));
   }
-  if false {
-    for i in 0..m.nsha1() {
-      eprintln!("{}  {}", hex::encode(m.sha1(i)), m.which(i));
-    }
+  for i in 0..m.nsha1() {
+    eprintln!("{}  {}", hex::encode(m.sha1(i)), m.which(i));
   }
-  assert!(false);
 }
