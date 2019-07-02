@@ -8,6 +8,7 @@ pub fn scan(path: &std::path::Path) -> Result<(), Fail> {
   use std::os::unix::fs::FileTypeExt;
   for entry in std::fs::read_dir(path)? {
     let entry = entry?;
+    entry.metadata()?.st_gen();
     let ty = entry.file_type()?;
     if ty.is_dir() {
       //eprintln!("dir: {:?}", entry);
@@ -55,7 +56,7 @@ fn file_info_string(path: &std::path::Path) -> Result<String, Fail> {
 }
 
 #[test] fn weird_pathname_compatibility() {
-  return;
+  if true { return; }
   // TODO
   use std::io::Write;
   let mut f1 = std::fs::File::create("t1/\x02some\x01bad\x05path").unwrap();
@@ -140,10 +141,11 @@ fn regex_line2() -> regex::Regex {
 pub fn check_sha1_in_bup(scanlist: &std::path::Path, bupdir: &std::path::Path) -> Result<(), Fail> {
   // TODO
   // Compute the list of contained file hashes first!
+  #[allow(unused)]
   let v1 = parse_scandata(&mut std::fs::File::open(scanlist).unwrap());
   let odb = crate::rbup::Odb::open(bupdir.into())?;
   odb.for_each_obj(|obj| {
-    unimplemented!("   TODO   ");
+    if true { unimplemented!("   TODO   "); }
     /*
     • Parse the tree
     • Discover files: .bup .bupl .bupm or plain directory
@@ -154,18 +156,7 @@ pub fn check_sha1_in_bup(scanlist: &std::path::Path, bupdir: &std::path::Path) -
     }
     Err(fail!("unimplemented"))
   })?;
-  return Ok(());
-  crate::rbup::explore(bupdir).unwrap();
-  let f3 = "/Users/dwerder/bup2/objects/pack/midx-3dc965112c6d56d6f5ae9255d464226216ef9b94.midx";
-  let fpath = std::path::Path::new(f3);
-  let fmidx = std::fs::File::open(fpath).unwrap();
-  let mut m = crate::rbup::Midx::open(Box::new(fmidx)).unwrap();
-  for x in &v1 {
-    if m.contains_sha1(&x.sha1) == false {
-      return Err(fail!("could not find sha1 {}", hex::encode(x.sha1)))
-    }
-  }
-  Ok(())
+  return Err(fail!("unimplemented"));
 }
 
 #[test] fn parse_example() {

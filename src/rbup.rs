@@ -1,7 +1,7 @@
 use dfail::{Fail, fail, faildb};
-use git2::{Repository, ObjectType, Error, Object};
+use git2::{Repository, ObjectType, Object};
 use sha1::{Sha1, Digest};
-use std::slice::from_raw_parts;
+use std::slice::{from_raw_parts, from_raw_parts_mut};
 use std::mem::transmute;
 use std::cell::{RefCell, RefMut};
 use std::io::{Read, Seek, SeekFrom};
@@ -21,7 +21,7 @@ pub fn explore(bupdir: &std::path::Path) -> Result<(), String> {
   let mut total_files = 0;
   let repo = Repository::open(bupdir).unwrap();
   repo.odb().unwrap().foreach(|x| {
-    let (size, oty) = repo.odb().unwrap().read_header(*x).unwrap();
+    let (_size, oty) = repo.odb().unwrap().read_header(*x).unwrap();
     if oty == ObjectType::Commit {
       //eprintln!("Commit: {:?}", x);
       let commit = repo.find_commit(x.clone()).unwrap();
@@ -131,7 +131,7 @@ impl FileSizeHash {
   assert_eq!(std::mem::size_of::<usize>(), 8);
 }
 
-fn file_stats(repo: &Repository, name: &str, obj: &Object) -> FileSizeHash {
+fn file_stats(repo: &Repository, _name: &str, obj: &Object) -> FileSizeHash {
   //eprintln!("found a file: {}", name);
   let mut size = 0;
   let mut hasher = Sha1::new();
@@ -236,8 +236,9 @@ impl Odb {
     }
     Ok(())
   }
-  pub fn for_each_oid<F: Fn(&Oid)>(&self, func: F) {
-    let func = self.for_each_oid_in_packs(func).unwrap();
+  pub fn for_each_oid<F: Fn(&Oid)>(&self, func: F) -> Result<F, Fail> {
+    let func = self.for_each_oid_in_packs(func)?;
+    Ok(func)
   }
   /*
   Discover all files without cycles.
@@ -307,7 +308,7 @@ impl Odb {
   }
   pub fn print_all_file_sha1(&self) -> Result<(), Fail> {
     self.for_each_file(|file| {
-      eprintln!("TODO do something with the file");
+      eprintln!("TODO do something with the file {:?}", file);
       Ok(())
     })?;
     Ok(())
@@ -353,8 +354,8 @@ impl std::fmt::Debug for Odb {
 }
 
 #[test] fn open_odb() {
-  let odb = Odb::open("/Users/dwerder/test_bup".into()).unwrap();
-  odb.for_each_oid(|oid| eprintln!("found oid {:?}", oid));
+  let odb = Odb::open("test/data/bup01".into()).unwrap();
+  odb.for_each_oid(|oid| eprintln!("found oid {:?}", oid)).unwrap();
   eprintln!("{:?}", odb);
   assert!(false);
 }
@@ -370,9 +371,10 @@ impl std::fmt::Debug for Odb {
 #[test] fn find_obj_by_oid() {
   let odb = Odb::open("/Users/dwerder/test_bup".into()).unwrap();
   eprintln!("{:?}", odb);
-  let obj = odb.find_obj_by_oid(&Oid::from_hex("66524634ea09459bf8ef3bc396ffc3b8ecc6d045").unwrap());
+  let oid = Oid::from_hex("66524634ea09459bf8ef3bc396ffc3b8ecc6d045").unwrap();
+  let obj = odb.find_obj_by_oid(&oid).unwrap().unwrap();
   eprintln!("{:?}", obj);
-  assert!(false);
+  assert!(obj.oid == oid);
 }
 
 /**
@@ -381,8 +383,8 @@ An opened git pack, it keeps open file descriptors.
 pub struct Pack {
   fpack: RefCell<std::fs::File>,
   fidx: RefCell<std::fs::File>,
-  version: u32,
-  fanout: [u32; 256],
+  #[allow(unused)] version: u32,
+  #[allow(unused)] fanout: [u32; 256],
   nsha1: u32,
   fpacklen: u32,
   //mmap_idx: &'static [u8],
@@ -418,6 +420,7 @@ impl Pack {
       }
     }
 
+    #[allow(unused)]
     let fidxlen = seek(&mut fidx, SeekFrom::End(0))? as u32;
     let fpacklen = seek(&mut fpack, SeekFrom::End(0))? as u32;
     /*
@@ -459,10 +462,13 @@ impl Pack {
     self.fpack.borrow_mut()
   }
   pub fn for_each_oid<F: Fn(&Oid)>(&self, func: F) -> Result<F, Fail> {
-    let f = self.fidx_mut();
-    let ni = self.nsha1;
-    unimplemented!("must not hold the borrow");
-    seek(f.deref_mut(), SeekFrom::Start(8 + 256 * 4))?;
+    let mut f = self.fidx_mut();
+    let f = f.deref_mut();
+    let mut ni = self.nsha1;
+    if true {
+      unimplemented!("must not hold the borrow");
+    }
+    seek(f, SeekFrom::Start(8 + 256 * 4))?;
     const N: u32 = 1;
     let mut buf = [0u8; (N * 20) as usize];
     loop {
@@ -486,7 +492,6 @@ impl Pack {
   pub fn off_to_sha1(&self) -> usize { 8 + 256 * 4 }
   pub fn off_to_offset(&self) -> usize { (8 + 256 * 4 + self.nsha1 as usize * 24) }
   pub fn for_each_oid_off<F: Fn(&Oid, u32) -> Result<(), Fail>>(&self, func: F) -> Result<F, Fail> {
-    use std::slice::{from_raw_parts_mut, from_raw_parts};
     let mut f = self.fidx_mut();
     let mut ncur = 0;
     let nend = self.nsha1;
@@ -550,7 +555,7 @@ impl Pack {
       }
       {
         let i = i as usize;
-        for ((sha1, o1), o2) in b1[..i].iter().zip(&b2[..i]).zip(&b2[1..]) {
+        for ((sha1, o1), _o2) in b1[..i].iter().zip(&b2[..i]).zip(&b2[1..]) {
           func(&Oid::new(*sha1), *o1)?;
         }
       }
@@ -559,10 +564,11 @@ impl Pack {
     Ok(func)
   }
   pub fn for_each_obj<F: Fn(&Obj) -> Result<(), Fail>>(&self, func: F) -> Result<F, Fail> {
+    // TODO
     // can not use both files simultaneously.
     // use idx to get the hash and offsets.
     // use the pack to extract the data.
-    struct FF<F: Fn(&Obj)> {
+    #[allow(unused)] struct FF<F: Fn(&Obj)> {
       f: F,
     }
     self.for_each_oid_off(|oid, off| {
@@ -633,7 +639,6 @@ impl Pack {
     */
     let content;
     {
-      use std::io::{Read, Cursor};
       use flate2::read::ZlibDecoder;
       // TODO use custom Read type which can reuse the read data from above, and read more if needed
       seek(f.deref_mut(), SeekFrom::Start(off as u64 + used as u64))?;
@@ -662,7 +667,8 @@ impl Pack {
     let fidx = fidx.deref_mut();
     let mut buf = vec![0; self.nsha1 as usize * 20];
     seek(fidx, SeekFrom::Start(self.off_to_sha1() as u64))?;
-    if fidx.read(&mut buf)? != 20 { return Err(fail!("unepxected eof")) }
+    let n = fidx.read(&mut buf)?;
+    if n != buf.len() { return Err(fail!("unepxected eof, read n: {}", n)) }
     let buf = buf;
     let a = unsafe{from_raw_parts(buf.as_ptr() as *const [u8;20], self.nsha1 as usize)};
 
@@ -744,7 +750,7 @@ fn size_from_varheader(buf: &[u8]) -> (u32, usize) {
   assert!(false);
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Oid {
   sha1: [u8; 20],
 }
@@ -757,7 +763,10 @@ impl Oid {
   }
   pub fn from_hex(hex: &str) -> Result<Self, Fail> {
     let sl = hex::decode(hex).map_err(|e|faildb!(e))?;
-    Ok(Oid::new([0;20]))
+    if sl.len() != 20 { return Err(fail!("unexpected length != 20: {}", sl.len())) }
+    let mut buf = [0;20];
+    for i in 0..buf.len() { buf[i] = sl[i]; }
+    Ok(Oid::new(buf))
   }
   pub fn to_string(&self) -> String {
     hex::encode(self.sha1)
@@ -789,7 +798,7 @@ impl Obj {
     //let rx = regex::Regex::new(r"(\d\d\d\d\d) ()\x00");
     loop {
       let entry_len;
-      let tree_entry = match cur.iter().position(|x| *x == 0) {
+      match cur.iter().position(|x| *x == 0) {
         Some(posnull) => {
           // s1 has mode and name
           // s2 has sha1
@@ -831,7 +840,7 @@ impl Obj {
 
 impl std::fmt::Display for Obj {
   fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
-    let s = String::from_utf8_lossy(&self.content);
+    let _s = String::from_utf8_lossy(&self.content);
     write!(fmt, "Obj ty: {:?}  size: {}\nEND Obj", self.ty, self.size)
   }
 }
@@ -892,13 +901,13 @@ impl std::fmt::Debug for Tree {
 }
 
 pub struct FileContentIter<'a> {
-  odb: &'a Odb,
-  oid_beg: Oid,
-  stack: Vec<Oid>,
+  _odb: &'a Odb,
+  _oid_beg: Oid,
+  _stack: Vec<Oid>,
 }
 
 impl<'a> FileContentIter<'a> {
-  fn recurse(&mut self) -> Result<(), Fail> {
+  fn _recurse(&mut self) -> Result<(), Fail> {
     // need a stack for the trees and the current position at each level
     // read oid_next from obj
     // if tree,
@@ -913,9 +922,10 @@ impl<'a> Iterator for FileContentIter<'a> {
   }
 }
 
+#[derive(Debug)]
 pub struct File<'a> {
-  odb: &'a Odb,
-  oid_beg: Oid,
+  #[allow(unused)] odb: &'a Odb,
+  #[allow(unused)] oid_beg: Oid,
 }
 
 impl<'a> File<'a> {
@@ -928,7 +938,7 @@ impl<'a> File<'a> {
 }
 
 pub struct Midx<T: ReadSeek> {
-  version: u32,
+  #[allow(unused)] version: u32,
   bits: u32,
   fanout: Vec<u8>,
   off_sha1: usize,
@@ -1053,7 +1063,6 @@ impl<T: ReadSeek> Midx<T> {
         return true;
       }
     }
-    false
   }
 }
 
