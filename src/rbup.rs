@@ -370,7 +370,7 @@ impl std::fmt::Debug for Odb {
 #[test] fn find_obj_by_oid() {
   let odb = Odb::open("test/data/bup01".into()).unwrap();
   eprintln!("{:?}", odb);
-  let oid = Oid::from_hex("66524634ea09459bf8ef3bc396ffc3b8ecc6d045").unwrap();
+  let oid = Oid::from_hex("7a1c6130c652b6ea92f4d19183693727e32c9ac4").unwrap();
   let obj = odb.find_obj_by_oid(&oid).unwrap().unwrap();
   eprintln!("{:?}", obj);
   assert!(obj.oid == oid);
@@ -461,13 +461,12 @@ impl Pack {
     self.fpack.borrow_mut()
   }
   pub fn for_each_oid<F: Fn(&Oid)>(&self, func: F) -> Result<F, Fail> {
-    let mut f = self.fidx_mut();
-    let f = f.deref_mut();
     let mut ni = self.nsha1;
-    if true {
-      unimplemented!("must not hold the borrow");
+    {
+      let mut f = self.fidx_mut();
+      let f = f.deref_mut();
+      seek(f, SeekFrom::Start(8 + 256 * 4))?;
     }
-    seek(f, SeekFrom::Start(8 + 256 * 4))?;
     const N: u32 = 1;
     let mut buf = [0u8; (N * 20) as usize];
     loop {
@@ -478,6 +477,8 @@ impl Pack {
       }
       let b2 = &mut buf[0..(ni.min(N)*20) as usize];
       //eprintln!("try to read {}", b2.len());
+      let mut f = self.fidx_mut();
+      let f = f.deref_mut();
       if f.read(b2)? != b2.len() {
         return Err(fail!("unexpected eof"))
       }
@@ -742,11 +743,9 @@ fn size_from_varheader(buf: &[u8]) -> (u32, usize) {
 }
 
 #[test] fn pack_open() {
-  // The pack should have a commit 56c2dad
-  let pack = Pack::open(Path::new("test/data"), "7087f2c06aae6abf9adefbe57a117733d2056e06").unwrap();
+  // The pack should have a commit c1b48e4 and a blob 1a4016998 and tree c8ba865c
+  let pack = Pack::open(Path::new("test/data/bup01/objects/pack"), "0d8fdec5468092443057873783d241fee728ae73").unwrap();
   pack.for_each_oid(|oid|eprintln!("got {}", oid.to_string())).unwrap();
-  //pack.for_each_obj(|obj|eprintln!("got {}", obj)).unwrap();
-  assert!(false);
 }
 
 #[derive(Clone, Debug, PartialEq)]
