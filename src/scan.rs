@@ -160,6 +160,6 @@ pub fn check_sha1_in_bup(scanlist: &std::path::Path, bupdir: &std::path::Path) -
 }
 
 #[test] fn parse_example() {
-  let v1 = parse_scandata(&mut std::fs::File::open("/Users/dwerder/s7-sd-after-fail.txt").unwrap());
-  assert!(v1.len() > 500);
+  let v1 = parse_scandata(&mut std::fs::File::open("test/data/scanfile01.txt").unwrap());
+  assert!(v1.len() == 8);
 }
