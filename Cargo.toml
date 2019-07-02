@@ -1,9 +1,22 @@
 [package]
 name = "rbup"
 version = "0.0.0"
+edition = "2018"
 authors = ["Dominik Werder <dominik.werder@gmail.com>"]
-description = "rbup"
+description = "Complementary tools for everyday `bup` use."
 license = "GPL-3.0-only"
 
 [lib]
 doctest = false
+
+[dependencies]
+libc = "0.2.58"
+log = "0.4.6"
+env_logger = "0.6.1"
+clap = "2.33.0"
+hex = "0.3.2"
+sha-1 = "0.8.1"
+git2 = "0.9.1"
+regex = "1.1.7"
+flate2 = "1.0"
+dfail = { git = "https://github.com/dominikwerder/dfail.git", rev = "32434d5" }
