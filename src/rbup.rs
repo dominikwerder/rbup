@@ -1,12 +1,12 @@
-use dfail::{Fail, fail, faildb};
-use git2::{Repository, ObjectType, Object};
-use sha1::{Sha1, Digest};
-use std::slice::{from_raw_parts, from_raw_parts_mut};
-use std::mem::transmute;
 use std::cell::{RefCell, RefMut};
 use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::ops::DerefMut;
+use std::slice::{from_raw_parts, from_raw_parts_mut};
+use std::mem::transmute;
+use dfail::{Fail, fail, faildb};
+use git2::{Repository, ObjectType, Object};
+use sha1::{Sha1, Digest};
 
 fn seek(file: &mut ReadSeek, pos: SeekFrom) -> std::io::Result<u64> {
   if true {
