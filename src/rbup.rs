@@ -357,7 +357,6 @@ impl std::fmt::Debug for Odb {
   let odb = Odb::open("test/data/bup01".into()).unwrap();
   odb.for_each_oid(|oid| eprintln!("found oid {:?}", oid)).unwrap();
   eprintln!("{:?}", odb);
-  assert!(false);
 }
 
 #[test] fn find_wrong_oid_returns_empty() {
@@ -1067,7 +1066,7 @@ impl<T: ReadSeek> Midx<T> {
 }
 
 #[test] fn midx_read() {
-  let fname = "test/data/bup01/objects/pack/midx-90a9c6f64d63d39516fafa7fd2fc2ceec918f5df.midx";
+  let fname = "test/data/bup01/objects/pack/midx-bb5b6d6b92a267a54bdc7440525e6b36eff6f997.midx";
   let fpath = std::path::Path::new(fname);
   let fmidx = std::fs::File::open(fpath).unwrap();
   let mut m = Midx::open(Box::new(fmidx)).unwrap();
